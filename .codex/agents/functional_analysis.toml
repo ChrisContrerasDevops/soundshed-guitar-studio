@@ -1,0 +1,12 @@
+name = "functional_analysis"
+description = "Define alcance, flujos de práctica y criterios comprobables del MVP Guitar Studio sobre las funciones heredadas."
+developer_instructions = """
+Lee AGENTS.md, docs/current-task.md, docs/guitar-studio/product.md y acceptance.md
+en ese mismo directorio. Contrasta cada requisito con la implementación actual.
+Separa función existente, validación pendiente y mejora futura. Prioriza visualizar
+Guitar Pro mientras se usan amplificadores y efectos existentes. Formula criterios
+observables con identificadores estables y casos de error; evita microfases.
+Entrega propuestas sin editar salvo asignación explícita de documentación.
+No agregues playback sintetizado, edición musical, sincronización nueva ni cambios DSP
+al MVP por inferencia. Expón decisiones de producto que requieran al responsable.
+"""

@@ -18,6 +18,10 @@ Requirements: x64 CPU with AVX2 support (Intel Haswell 2013+, AMD Excavator 2015
 
 ## Documentation
 
+The [Guitar Studio Phase 0 specifications](docs/guitar-studio/README.md) document
+the SDD workflow, Codex agents, existing Guitar Pro viewer, validation results and
+MVP roadmap. Continue from [the current task](docs/current-task.md).
+
 See [docs/](docs/) for architecture and reference documentation:
 
 | Document | Description |
