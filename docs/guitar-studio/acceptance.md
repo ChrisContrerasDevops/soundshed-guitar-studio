@@ -4,9 +4,9 @@
 
 | ID | Criterio | Evidencia / estado |
 | --- | --- | --- |
-| P0-01 | SDD y cinco subagentes nativos configurados | [Índice](README.md), [AGENTS](../../AGENTS.md), [TOML](../../.codex/agents/); comprobación en validación |
+| P0-01 | SDD y cinco subagentes nativos configurados | [Índice](README.md), [AGENTS](../../AGENTS.md), [TOML](../../.codex/agents/); **5/5 invocados**, evidencia en validación |
 | P0-02 | Arquitectura y dependencias reales identificadas | [Arquitectura](architecture.md), SHA base y visor heredado identificados |
-| P0-03 | Compilación verificada o bloqueo reproducible | [Validación](validation.md): CMake ausente, submódulos pendientes y descarga npm fallida; no hay build aprobado |
+| P0-03 | Compilación verificada o bloqueo reproducible | **Build Standalone Release arm64 y core Debug completados**; aplicación abierta, confirmada por el usuario; [validación](validation.md) |
 | P0-04 | Alternativas, licencias y mantenimiento evaluados | [Integración](integration.md), [ADR 0002](../adr/0002-reuse-alphatab-viewer.md) propuesto |
 | P0-05 | MVP y roadmap definidos | [Producto](product.md), [roadmap](roadmap.md) y criterios MVP siguientes |
 | P0-06 | Estrategia contra regresiones de audio | [Pruebas](testing.md), distinción entre A/B offline y continuidad en vivo |

@@ -1,6 +1,6 @@
 # Guitar Studio — desarrollo guiado por especificaciones
 
-Fase 0, 17 de noviembre de 2026. Base: SoundShed
+Fase 0, iniciada el 17 de noviembre de 2026; revalidación técnica el 18. Base: SoundShed
 `a9f4fec1123d51218e090decaceec44c455740b5`. Esta documentación describe el proyecto
 derivado; la referencia técnica upstream se conserva en el resto de `docs/`.
 
@@ -29,10 +29,15 @@ autorizado y se valida contra esos criterios. El cierre aporta evidencia y actua
 la tarea actual. Un ADR conserva decisiones duraderas y sus consecuencias, no pasos
 de ejecución. No se exige un documento nuevo por prueba, pantalla o subtarea.
 
+El encargo del 18 de noviembre resolvió CMake local, submódulos y npm conservando
+los pins. El standalone arm64 compiló y el usuario confirmó su apertura después
+de aceptar los avisos del sistema. Fase 1 aún no se implementa. Los resultados
+actuales y la cobertura pendiente están al comienzo de [validación](validation.md).
+
 Estados de evidencia: **verificado**, **fallo heredado**, **bloqueado** o **pendiente**.
 El estado del producto se decide por [aceptación](acceptance.md), no por la existencia
-de archivos. Los bloqueos nativos registrados permiten cerrar el análisis de Fase 0,
-pero no permiten declarar el MVP operativo ni publicar una distribución.
+de archivos. El build y el arranque permiten avanzar a validar el visor existente;
+no certifican los criterios MVP ni autorizan publicar una distribución.
 
 ## Configuración Codex
 
@@ -47,10 +52,11 @@ La política administrada del cliente sigue aplicándose. Fuente:
 Abrir la raíz `soundshed-guitar-studio` como proyecto de Codex. Ejemplo de encargo:
 «Usa `architecture` para revisar ADR 0002 y `qa` para comprobar los criterios de
 Fase 1; solo lectura y sin cambios DSP». No hace falta activar los cinco a la vez.
-Si el cliente ya estaba abierto antes de crear los archivos, comprobar su descubrimiento
-en una sesión nueva. La validación del formato y las limitaciones de activación se
-registran en [validación](validation.md); no se afirma una invocación de estos perfiles
-cuando solo se han utilizado agentes de revisión de la sesión actual.
+El 18 de noviembre se comprobó la invocación nativa de los cinco perfiles con Codex
+0.169.0-alpha.11.1, después de que el usuario autorizara confiar únicamente en este
+repositorio. Usar una sesión normal: en esta versión `--ephemeral` descubrió los
+perfiles, pero falló al crear los hilos hijos. La evidencia y los nombres del selector
+están en [validación](validation.md). No hace falta cambiar los TOML ni fijar modelos.
 
 Referencias heredadas de entrada: [quickstart](../agent-quickstart.md),
 [arquitectura](../architecture-overview.md), [visor](../practice-tool-tablature.md)

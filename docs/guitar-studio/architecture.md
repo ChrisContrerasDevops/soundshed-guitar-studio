@@ -64,6 +64,33 @@ Los puntos de extensión ya existen:
 | Almacenamiento | `core/src/controller/PracticeTabMessages.{h,cpp}`, `JsonStore`, ID por hash |
 | Recursos empaquetados | `core/ui/scripts/copy-vendor.js`: alphaTab, LICENSE, Bravura y OFL |
 
+### Mapa de reutilización comprobado el 2026-11-18
+
+La instalación desde el lockfile confirmó `@coderline/alphatab` **1.9.0** y el build
+UI copió los seis assets vendor previstos (incluido jszip). El flujo reutilizable es:
+
+| Capacidad existente | Punto de entrada y recorrido | Reutilización en Fase 1 |
+| --- | --- | --- |
+| Abrir por diálogo | `panel.ts:300` → `browsePracticeToolTab` → `PracticeTabMessages.cpp:79` → selector en `PluginProcessorAdapter.cpp:1031` | Probar archivos reales, conservar diálogo y contrato |
+| Arrastrar archivo | `panel.ts:278` → `File.arrayBuffer()` → base64 → `importPracticeToolTabData` | Conservar puente portable; comprobar errores y consumo antes del límite nativo |
+| Guardar/recuperar bytes | `PracticeTabMessages.cpp`: hash, `JsonStore` tipo `practice-tab`, `requestPracticeToolTab` y respuestas Loaded/Failed | Reutilizar deduplicación/recall; no crear otra biblioteca ni parser C++ |
+| Interpretar y dibujar | `session.ts:170` convierte base64 a `Uint8Array`; `tabView.ts:304` llama `AlphaTabApi.load(bytes, [trackIndex])` | Validar GP3–8 en WebKit; no escribir un lector |
+| Cambiar pista/vista | `panel.ts:305`, `tabView.ts:327`: `renderTracks`, perfiles Tab/ScoreTab/Score | Usar controles y estado existentes; escala inicial 0.9, sin prometer un control de zoom nuevo |
+| Persistencia | `tabState.ts`: `tabId`, `trackIndex`, sync; `practiceTool.tabs` guarda hasta 300 referencias; `practiceTool.tabStaves` conserva vista | Probar proyectos existentes y archivo original movido |
+| Referencia y cursor | `reference.ts`, `youtubeReference.ts`, `syncPoints.ts` y modo `EnabledExternalMedia` | Mantener el transporte existente; vista estática sin referencia y sin síntesis propia |
+| Ciclo de vida/recursos | `alphaTabLoader.ts` carga script local una vez; `tabView.ts:315` destruye API al cerrar | Comprobar worker, Bravura, recuperación y ciclos en WKWebView |
+
+Los filtros GP del diálogo son `.gp`, `.gpx`, `.gp3`, `.gp4`, `.gp5`; el arrastre
+acepta además `.gp7`. Ambos admiten MusicXML, Capella y alphaTex por las extensiones
+de su lista. Esta asimetría heredada se registra, sin corregirla en Fase 0.
+La extensión no certifica el formato ni la fidelidad del parser. El límite nativo
+es 16 MiB; el arrastre lee el archivo completo en JS antes de enviarlo, por lo que
+el límite no demuestra por sí solo acotación de memoria en la WebView.
+
+La suite UI original pasó 172 archivos / 1.455 tests en esta revisión. Es evidencia
+de lógica y contratos simulados, no una prueba de render GP real o audio simultáneo.
+Los resultados de build nativo y de agentes se mantienen en [validación](validation.md).
+
 El C++ lee/almacena bytes y responde al bridge; no parsea Guitar Pro. La importación
 rechaza vacíos y archivos de más de 16 MiB, con comprobación previa del tamaño
 base64 en el flujo de arrastre. La UI interpreta el contenido. No se introduce

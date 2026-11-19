@@ -3,12 +3,18 @@
 | Fase | Resultado | Criterio de salida |
 | --- | --- | --- |
 | 0 — Base y SDD | Arquitectura, agentes, especificación y evidencia de validación; ningún cambio funcional | P0-01…P0-08, admitiendo los bloqueos reproducibles de build |
-| 1 — MVP sobre el visor heredado | Build arm64 reproducible, corpus autorizado y validación de visor+audio; corregir solo brechas especificadas y autorizadas | MVP-01…MVP-09 demostrados en Standalone, ADR 0002 ratificado o revisado |
+| 1 — MVP sobre el visor heredado | Partir del standalone arm64 validado en Fase 0; preparar corpus autorizado y validar visor+audio; corregir solo brechas especificadas y autorizadas | MVP-01…MVP-09 demostrados en Standalone, ADR 0002 ratificado o revisado |
 | 2 — Evolución y distribución | Alcance decidido según evidencia: compatibilidad de plugins/plataformas, mejoras de práctica y preparación de distribución | Especificación propia antes de implementar; licencias/marca/servicios resueltos antes de publicar |
 
 No se crean fases separadas por cada prueba o documento. La tarea de inicio de
 Fase 1 está en [current-task](../current-task.md). Terminar Fase 0 no autoriza
 implementar Fase 1 durante esta sesión ni a distribuir el fork.
+
+La revalidación del 18 de noviembre resolvió tooling, descargas y build arm64; el
+usuario confirmó la apertura del programa. La evidencia y las limitaciones de
+pruebas permanecen en [validación](validation.md). Las dependencias siguientes son
+el corpus Guitar Pro, la configuración de audio de referencia y la medición en
+WKWebView, no la implementación de otro lector.
 
 ## Decisiones pendientes
 
