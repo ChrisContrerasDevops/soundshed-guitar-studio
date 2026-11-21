@@ -1028,7 +1028,7 @@ void PluginProcessorAdapter::BrowseFileAsync(guitarfx::BrowseFileType type, cons
     case guitarfx::BrowseFileType::TablatureFile:
         // What alphaTab imports (core/ui/ts/practiceTool/tab/): Guitar Pro 3-8, MusicXML
         // (plain and compressed), Capella and alphaTex.
-        filters = "*.gp;*.gpx;*.gp3;*.gp4;*.gp5;*.musicxml;*.mxl;*.xml;*.capx;*.atex;*.alphatex";
+        filters = "*.gp;*.gpx;*.gp3;*.gp4;*.gp5;*.gp7;*.musicxml;*.mxl;*.xml;*.capx;*.atex;*.alphatex";
         break;
     case guitarfx::BrowseFileType::ArchiveFile:
         filters = "*.soundshed.preset;*.soundshed.presets;*.zip";

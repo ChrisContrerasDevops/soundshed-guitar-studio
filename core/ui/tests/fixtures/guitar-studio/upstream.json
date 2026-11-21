@@ -1,0 +1,44 @@
+[
+  {
+    "file": "notes-gp3.gp3",
+    "source": "https://raw.githubusercontent.com/CoderLine/alphaTab/v1.9.0/packages/alphatab/test-data/guitarpro3/notes.gp3",
+    "sha256": "a9ae6bb06ed259016e7a138a1b17d850491e9e2e8510c235df28a9ec81a706f1",
+    "bytes": 1165
+  },
+  {
+    "file": "notes-gp4.gp4",
+    "source": "https://raw.githubusercontent.com/CoderLine/alphaTab/v1.9.0/packages/alphatab/test-data/guitarpro4/notes.gp4",
+    "sha256": "4f918d90aed2bdd12d229e612637b6f470a409771c805cc648c0682028f9125e",
+    "bytes": 1208
+  },
+  {
+    "file": "notes-gp5.gp5",
+    "source": "https://raw.githubusercontent.com/CoderLine/alphaTab/v1.9.0/packages/alphatab/test-data/guitarpro5/notes.gp5",
+    "sha256": "74b6be1b298a86739ddb5745042901ced61cb8509ab282807048545f48177e27",
+    "bytes": 1721
+  },
+  {
+    "file": "notes-gp6.gpx",
+    "source": "https://raw.githubusercontent.com/CoderLine/alphaTab/v1.9.0/packages/alphatab/test-data/guitarpro6/notes.gpx",
+    "sha256": "b437b7a2b3e212822acadd67877807baee48837ea76d9b737bfbf9f5db9c07fc",
+    "bytes": 14895
+  },
+  {
+    "file": "notes-gp7.gp",
+    "source": "https://raw.githubusercontent.com/CoderLine/alphaTab/v1.9.0/packages/alphatab/test-data/guitarpro7/notes.gp",
+    "sha256": "44c5c7f3d15c9088fc23c3a4bb8cf2350bc8a2e0a5405816eb209eb764d5c81a",
+    "bytes": 9382
+  },
+  {
+    "file": "alphatab-LICENSE",
+    "source": "https://raw.githubusercontent.com/CoderLine/alphaTab/v1.9.0/LICENSE",
+    "sha256": "3944bcfa6351ab72fc15edac4a38e614453e978d5b71e288c23762fe71cf6aa5",
+    "bytes": 16907
+  },
+  {
+    "file": "barnumbers-gp8.gp",
+    "source": "https://raw.githubusercontent.com/CoderLine/alphaTab/v1.9.0/packages/alphatab/test-data/guitarpro8/barnumbers-all.gp",
+    "sha256": "cd964c8dd69650b8a7844a47be7e3d94a3e212fbbf1bbb7fdea9cd0669e3724a",
+    "bytes": 12025
+  }
+]

@@ -149,6 +149,29 @@ void TestRefusals()
     Check(harness.sent.empty() && harness.errors.size() == 2, "a file over the cap is refused");
     Check(harness.store.Count(guitarfx::storage::ItemType::kPracticeTab) == 0, "and nothing is stored");
 }
+void TestRequestCorrelation()
+{
+    Harness harness;
+    harness.Send({{"type", "browsePracticeToolTab"}, {"requestId", "cancel-1"}});
+    Check(harness.sent.back().value("cancelled", false), "a correlated cancellation is acknowledged");
+    Check(harness.sent.back().value("requestId", "") == "cancel-1", "cancellation echoes its request");
+
+    const auto data = guitarfx::util::EncodeBase64(SampleScore());
+    harness.Send({{"type", "importPracticeToolTabData"}, {"fileName", "fixture.gp"},
+                  {"data", data}, {"requestId", "open-2"}});
+    Check(harness.sent.back().value("requestId", "") == "open-2", "import echoes its request");
+    const auto id = harness.sent.back().value("id", "");
+    harness.Send({{"type", "requestPracticeToolTab"}, {"id", id}, {"requestId", "recall-3"}});
+    Check(harness.sent.back().value("requestId", "") == "recall-3", "recall echoes its request");
+    Check(harness.sent.back().value("data", "") == data, "correlation preserves stored bytes");
+    harness.Send({{"type", "requestPracticeToolTab"}, {"id", "missing"}, {"requestId", "missing-4"}});
+    Check(harness.sent.back().value("requestId", "") == "missing-4", "missing recall echoes its request");
+    harness.Send({{"type", "importPracticeToolTabData"}, {"fileName", "empty.gp"},
+                  {"data", ""}, {"requestId", "empty-5"}});
+    Check(harness.sent.back().value("type", "") == "practiceToolTabFailed", "invalid import returns a failure");
+    Check(harness.sent.back().value("requestId", "") == "empty-5", "invalid import echoes its request");
+    Check(harness.store.Count(guitarfx::storage::ItemType::kPracticeTab) == 1, "failed imports add no documents");
+}
 } // namespace
 
 int main()
@@ -157,6 +180,7 @@ int main()
     TestDroppedFileIsStoredAndRecalled();
     TestBrowse();
     TestRefusals();
+    TestRequestCorrelation();
 
     if (gFailures == 0)
     {

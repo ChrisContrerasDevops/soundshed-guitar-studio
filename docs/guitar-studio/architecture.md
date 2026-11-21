@@ -107,6 +107,39 @@ Verificar worker, fuentes, CSP y esquema `juce:` en WKWebView antes de ratificar
 [ADR 0002](../adr/0002-reuse-alphatab-viewer.md). No trasladar importación, parsing,
 renderizado ni logging al callback; tampoco añadir un puente del visor al grafo DSP.
 
+## Implementación de Fase 1 (2026-11-20)
+
+Se conserva la frontera descrita arriba. El mapa del 18 de noviembre documenta la
+base; los cambios actuales son:
+
+- `tab/dock.ts` mueve la sección existente entre Practice Tool y el panel Score.
+  Conserva una única instancia y respeta las feature flags; Hide conserva el
+  documento y Close destruye el renderizador. Play sigue siendo el panel principal.
+- `tab/readingControls.ts` y `tabView.ts` usan `display.scale`, `updateSettings`,
+  `render` y `boundsLookup` de alphaTab para zoom y desplazamiento por compás.
+  Estos controles no emiten seek/play ni mensajes de parámetros.
+- `tabView.ts` invalida cargas pendientes mediante una generación; ignora callbacks
+  de instancias destruidas y libera worker/RAF al cerrar. Pista, vista y zoom
+  reutilizan la instancia; abrir otro archivo sustituye la anterior.
+- `session.ts`, el bridge y `PracticeTabMessages.cpp` correlacionan importación y
+  recuperación con un `requestId` opcional, limitado a 128 caracteres en C++.
+  Loaded/Failed lo devuelven; cancelar el diálogo devuelve `cancelled: true` solo
+  para solicitudes correlacionadas. Mensajes sin ID conservan compatibilidad.
+  Los nombres de mensajes, hashes, documentos JsonStore y bindings no cambian.
+- El arrastre rechaza vacíos y más de 16 MiB **antes** de `arrayBuffer`; el límite
+  nativo permanece. El diálogo también admite `.gp7`, igual que el arrastre.
+
+El parser de alphaTab se ejecuta de forma síncrona en el hilo de UI; el worker
+atiende el renderizado. No se ha trasladado parsing al worker ni al callback de
+audio. El límite comprimido no garantiza un límite de memoria descomprimida o
+tiempo para archivos hostiles/complejos. El corpus probado es deliberadamente
+pequeño; medir archivos representativos mayores sigue pendiente.
+
+La prueba en WKWebView confirmó scripts, worker y Bravura locales bajo `juce:`;
+el Standalone confirmó importación/persistencia/respuesta y SVG con su bridge real.
+La continuidad con hardware y la incidencia de arranque están delimitadas en
+[validación](validation.md). No se añadió ninguna dependencia de producto.
+
 ## Compilación y dependencias
 
 | Componente | Base observada |

@@ -210,3 +210,49 @@
 .practice-tool-tab-hint.is-error {
   color: var(--practice-amber-text);
 }
+
+/* The same score section can sit beside Play; it is never a modal overlay. */
+.main-content.has-score-dock {
+  flex-direction: row;
+}
+.main-content.has-score-dock > .tab-panel {
+  min-width: 0;
+}
+.score-dock {
+  display: flex;
+  flex: 0 0 46%;
+  flex-direction: column;
+  min-width: 320px;
+  min-height: 0;
+  padding: 10px;
+  overflow: auto;
+  border-left: 1px solid var(--border-medium);
+  background: var(--bg-primary);
+}
+.score-dock-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.score-dock .practice-tool-tab-viewport {
+  height: min(58vh, 600px);
+}
+#practice-tool-tab-bar {
+  width: 72px;
+}
+@media (max-width: 1000px) {
+  .main-content.has-score-dock {
+    flex-direction: column;
+  }
+  .score-dock {
+    flex: 0 0 44%;
+    min-width: 0;
+    border-left: 0;
+    border-top: 1px solid var(--border-medium);
+  }
+  .score-dock .practice-tool-tab-viewport {
+    height: 210px;
+  }
+}

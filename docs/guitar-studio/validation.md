@@ -1,4 +1,145 @@
-# Validación de Fase 0
+# Validación de Guitar Studio
+
+
+## Fase 1 — 2026-11-20
+
+HEAD de entrada: `72294ee2ac0206066c831ab71e57b7f9fe2f3916` (árbol limpio).
+La base de producto sigue siendo `a9f4fec1123d51218e090decaceec44c455740b5`.
+Especificación y aceptación se actualizaron antes de implementar. No se cambiaron
+DSP, versiones npm, lockfile, CMake ni submódulos; no hubo commits/push ni cambios
+globales. Mismo entorno macOS arm64 y tooling de Fase 0, detallado más abajo.
+Los logs están en `.cache/phase1-2026-11-19/`; se conserva el nombre del directorio
+inicial aunque la ejecución y este informe se completaron el día 20.
+
+### Resultado frente a la base
+
+| Comprobación | Fase 0 | Fase 1 / evidencia local |
+| --- | --- | --- |
+| Standalone Release arm64 | Build aprobado | **Aprobado**, `standalone-build.log`; `lipo -archs`: arm64 |
+| UI build, tipos y lint | Aprobados | **Aprobados**, `ui-build.log`, `ui-results.json` |
+| Vitest | 172 archivos / 1.455 tests | **175 archivos / 1.475 tests aprobados**; parser real, cargas concurrentes y respuestas tardías añadidos |
+| Checks UI | Todos aprobados | Ciclos, estado, protocolo, presentación, pickup sensing, tamaños y estilos **aprobados** |
+| Core Debug / CTest | 186/187 | **186/187**, salida 8; solo `StartupPresetDeferralTests`; `ctest-result.json`, `ctest.xml` |
+| Pruebas del analizador A/B | 18/18 | **18/18**, `audio-analysis-tests.log` |
+| Señal offline | Sin comparación ejecutada | **21/21 WAV idénticos por SHA256**, siete cadenas × DI/impulso/silencio; `audio-comparison.json` |
+| Pines | 13 aprobados | **13 aprobados**, `dependency-pins.log`; gitlinks JUCE/Eigen sin cambios |
+| Tamaños C++ | 9 incumplimientos | **Los mismos 9**, salida 1, `cpp-sizes.log`; sin elevar presupuestos |
+| Recursos del bundle | alphaTab 1.9.0 y Bravura locales | Build copia 6/6 vendor; UI candidata y bundle coinciden, `bundle-ui-check.json` |
+
+`StartupPresetDeferralTests` conserva el problema de rutas del fixture macOS
+explicado en Fase 0. No se corrigió ni ocultó. Las suites prioritarias de grafos,
+mixer, presets, NAM/IR, automatización, latencia y Practice Tool pasaron dentro de
+CTest. No hubo fallos nuevos en estas suites; esto no resuelve por sí solo la
+incidencia visual de arranque descrita a continuación.
+
+La comparación de señal usó **Debug arm64, 48 kHz, buffer 64**, el binario de Fase 0
+antes de reconstruir y el candidato después. Se mantuvieron assets, definición y
+DI. No se ejecutaron el harness completo Release de dos worktrees ni el benchmark
+`AudioPerf`; no se deducen latencia de dispositivo, rendimiento o continuidad de
+UI+audio a partir de los hashes.
+
+### Ejecución real e incidencia de ventana negra
+
+La primera apertura de la candidata creó el proceso, pero el usuario confirmó una
+ventana negra. El registro contenía `InvalidStateError: The object is in an invalid
+state`, sin stack. **Esa apertura no se considera aprobada.** No hay evidencia para
+atribuirla al visor o clasificarla como fallo heredado.
+
+Se ejecutó el HTML completo en un host WKWebView independiente: llegó a `uiReady`,
+retiró el splash y no registró errores (`full-ui-probe-result/`). Después, dos
+reinicios normales del Standalone con diagnóstico temporal en el bundle generado
+llegaron a UI completa; el segundo ejercitó el bridge nativo real:
+
+- Importación, guardado por hash y respuesta de los siete fixtures; SVG visible en
+  el DOM y pistas/compases esperados.
+- Zoom 150 %, compás 12, pista Bass, vista combinada; Play activo y mismo preset.
+- Archivo inválido: error controlado, retirada de notación anterior y reapertura
+  correcta del ejercicio. No hubo error no capturado en ese recorrido.
+
+Evidencia: `native-smoke.log`, `native-smoke.js` y offsets locales de la sesión.
+Las líneas con origen `phase1-diagnostic`/`phase1-native-smoke` reutilizan el canal
+existente de log de bootstrap: **son resultados del diagnóstico**, no nuevos
+fallos de bootstrap. La prueba importa bytes por el mismo mensaje del arrastre;
+no automatiza la selección de archivo en el diálogo del sistema.
+
+Se restauró exactamente `index.html`, se borraron los dos scripts temporales del
+bundle y se abrió la build normal (PID 57651). Ejecutable SHA256
+`d8b8564d61758b7f61fe3dba9de61d0ea4a0e3019315ee2bde88c5dddb955841`.
+**Confirmación visual recibida del usuario:** «veo la interfaz y se abre la
+partitura». Confirma la recuperación del arranque y apertura en la build normal;
+no se identificó la causa de la ventana negra inicial ni se afirma una corrección
+definitiva. La sesión normal posterior no añadió errores al log durante la
+revisión. No se añadieron hooks de diagnóstico al producto ni se cambiaron
+permisos/dispositivos del Mac.
+
+El usuario también indicó que no encuentra Play/Pausa para la partitura. La
+implementación es de visualización y mantiene alphaTab en `EnabledExternalMedia`,
+sin síntesis propia. Esta observación no valida reproducción: queda registrada
+como expectativa fuera del alcance actual, explicitado en [producto](product.md).
+
+### Corpus Guitar Pro y render WebKit
+
+Procedencia, hashes y licencia en
+[fixtures/README](../../core/ui/tests/fixtures/guitar-studio/README.md) y su manifiesto.
+Los fixtures upstream conservan los bytes del tag alphaTab v1.9.0 y MPL-2.0; el
+ejercicio multipista es original, generado con el exportador GP7+ instalado.
+
+| Formato / fixture | Contenido esperado y comprobado por parser | WKWebView / bridge real |
+| --- | --- | --- |
+| GP3 `notes-gp3.gp3` | 1 pista, 1 compás, afinación estándar, trastes 1–4 | SVG / aprobado |
+| GP4 `notes-gp4.gp4` | Igual | SVG / aprobado |
+| GP5 `notes-gp5.gp5` | Igual | SVG / aprobado |
+| GP6 `notes-gp6.gpx` | Igual | SVG / aprobado |
+| GP7 `notes-gp7.gp` | Igual | SVG / aprobado |
+| GP8 `barnumbers-gp8.gp` | Steel Guitar, 6 compases de silencios | SVG / aprobado; no acredita técnicas GP8 con notas |
+| GP7+ `reading-exercise.gp` | 12 compases, Guitar/Bass, 6/4 cuerdas, 100 bpm | Ambas pistas y controles / aprobado |
+
+No se certifica la fidelidad de todas las técnicas, repeticiones, archivos grandes
+ni otros formatos que upstream admite. `.gp7` se añadió al filtro nativo para igualar
+el arrastre; `.gp` es la extensión de los fixtures GP7/8, no se infiere versión por
+extensión. MusicXML/Capella/alphaTex siguen disponibles, fuera de esta matriz GP.
+
+El runner [wk-smoke.swift](../../tools/guitar-studio/wk-smoke.swift) carga módulos
+reales, CSS y fixtures bajo `juce://juce.backend`, con CSP equivalente y respuestas
+nativas **simuladas**. A 1200 y 800 CSS px pasó apertura, tres perfiles de pentagrama,
+pistas, zoom, compases, movimiento del mismo panel, recuperación de error y
+20 ciclos. Cada Close dejó cero workers; máximo uno simultáneo, uno al finalizar
+con partitura abierta. No hubo peticiones HTTP(S) del visor ni mensajes de
+transporte/audio por sus controles visuales. No es una medición de memoria RSS.
+
+Informes y capturas: `wk-1200/wk-report.json`, `wk-800/wk-report.json` y sus
+`wk-score.png`. La captura estrecha muestra partitura+tablatura y atribución alphaTab.
+Ese host **no ejecuta el motor de audio**; se complementa con la prueba nativa
+anterior, no se presenta como captura del Standalone.
+
+### Reproducción y cobertura pendiente
+
+Con las builds ya configuradas en Fase 0:
+
+```sh
+npm --prefix core/ui run build
+npm --prefix core/ui run verify
+.cache/phase0-toolchain/bin/cmake --build core/build-phase0-arm64 --parallel 4
+.cache/phase0-toolchain/bin/ctest --test-dir core/build-phase0-arm64 -C Debug -j 4 --output-on-failure
+.cache/phase0-toolchain/bin/cmake --build juce/builds-phase0-arm64 --config Release --target SoundshedGuitar_Standalone --parallel 4
+```
+
+Se ejecutaron individualmente todos los scripts de `verify` para conservar sus
+salidas. Reproducción del runner WebKit y protocolo de audio en [pruebas](testing.md).
+
+Pendientes: controles de lectura manuales, completar diálogo/arrastre por
+formato, recall de proyecto con original movido, y la matriz de concurrencia con
+hardware. El usuario confirmó que **no dispone ahora de hardware para comprobar
+audio**. No se cambian dispositivos ni se marca MVP-03/MVP-08 como completo.
+También faltan memoria/CPU bajo carga y macOS mínimo soportado. No hay bloqueo de
+compilación o dependencia pendiente. Revisión final: `git diff --check` aprobado,
+enlaces locales sin destinos rotos y cinco TOML válidos. El bundle restaurado
+coincide con los archivos UI generados; no contiene scripts temporales.
+
+Se utilizó revisión especializada de arquitectura para definir reutilización,
+navegación y ciclo de vida. Otras revisiones delegadas terminaron por límite de uso;
+el agente principal continuó análisis, implementación y pruebas. No se presenta
+una revisión independiente final de cinco agentes que no ocurrió.
 
 ## Revalidación del 2026-11-18
 

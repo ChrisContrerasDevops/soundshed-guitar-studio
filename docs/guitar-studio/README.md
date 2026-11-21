@@ -4,9 +4,11 @@ Fase 0, iniciada el 17 de noviembre de 2026; revalidación técnica el 18. Base:
 `a9f4fec1123d51218e090decaceec44c455740b5`. Esta documentación describe el proyecto
 derivado; la referencia técnica upstream se conserva en el resto de `docs/`.
 
-**Hallazgo de partida:** ya existen alphaTab 1.9.0 y visualización Guitar Pro en
-Practice Tool. Fase 0 no los implementa ni los cambia. Fase 1 comprobará su idoneidad
-para el MVP; no se presupone que hayan sido validados en este Mac.
+**Estado al 2026-11-20:** Fase 1 implementa el acceso Score, zoom y navegación por
+compases reutilizando alphaTab 1.9.0 y Practice Tool. Hay evidencia de render en
+WKWebView y de importación en el Standalone arm64. El usuario confirmó interfaz y
+partitura visibles tras reiniciar; quedan comprobaciones manuales y de audio para
+la aceptación completa. Resultados y límites en [validación](validation.md).
 
 | Fuente única | Contenido |
 | --- | --- |
@@ -19,7 +21,7 @@ para el MVP; no se presupone que hayan sido validados en este Mac.
 | [Roadmap](roadmap.md) | Fases y decisiones pendientes |
 | [ADR 0001](../adr/0001-sdd-and-existing-baseline.md) | Metodología y respeto a la base |
 | [ADR 0002](../adr/0002-reuse-alphatab-viewer.md) | Recomendación del visor |
-| [Tarea actual](../current-task.md) | Traspaso concreto a Fase 1 |
+| [Tarea actual](../current-task.md) | Estado activo y siguiente comprobación |
 
 ## Metodología
 
@@ -31,8 +33,9 @@ de ejecución. No se exige un documento nuevo por prueba, pantalla o subtarea.
 
 El encargo del 18 de noviembre resolvió CMake local, submódulos y npm conservando
 los pins. El standalone arm64 compiló y el usuario confirmó su apertura después
-de aceptar los avisos del sistema. Fase 1 aún no se implementa. Los resultados
-actuales y la cobertura pendiente están al comienzo de [validación](validation.md).
+de aceptar los avisos del sistema. La implementación posterior conserva versiones,
+persistencia y DSP. Los resultados actuales y la cobertura pendiente están al
+comienzo de [validación](validation.md).
 
 Estados de evidencia: **verificado**, **fallo heredado**, **bloqueado** o **pendiente**.
 El estado del producto se decide por [aceptación](acceptance.md), no por la existencia

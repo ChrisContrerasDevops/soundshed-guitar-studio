@@ -276,7 +276,7 @@
                        score file. alphaTab's own attribution must stay visible. -->
                   <div class="settings-section practice-tool-tab-section" id="practice-tool-tab-section">
                     <div class="practice-tool-tab-toolbar">
-                      <button id="practice-tool-tab-open" type="button" class="secondary" title="Open a Guitar Pro, MusicXML, Capella or alphaTex file">Open Tab…</button>
+                      <button id="practice-tool-tab-open" type="button" class="secondary" title="Open a local Guitar Pro, MusicXML, Capella or alphaTex file">Open Guitar Pro…</button>
                       <select id="practice-tool-tab-track" class="practice-tool-tab-select" aria-label="Track shown" hidden></select>
                       <select id="practice-tool-tab-staves" class="practice-tool-tab-select" aria-label="Notation shown" hidden>
                         <option value="tab">Tab</option>
@@ -294,6 +294,18 @@
                       <span class="practice-tool-tab-spacer"></span>
                       <button id="practice-tool-tab-sync-toggle" type="button" class="secondary" aria-pressed="false" title="Mark where bars start in the reference" disabled>Edit Sync</button>
                       <button id="practice-tool-tab-close" type="button" class="practice-tool-icon-btn practice-tool-tab-close" title="Close the tab" aria-label="Close the tab" hidden>✕</button>
+                    </div>
+                    <div class="practice-tool-tab-toolbar" id="practice-tool-tab-reading" aria-label="Score navigation" hidden>
+                      <button id="practice-tool-tab-previous" type="button" aria-label="Previous bar">←</button>
+                      <label for="practice-tool-tab-bar" class="practice-tool-tab-label">Bar</label>
+                      <input id="practice-tool-tab-bar" class="practice-tool-tab-select" type="number" min="1" step="1" value="1" aria-label="Go to bar" />
+                      <span id="practice-tool-tab-bar-count" class="practice-tool-tab-label"></span>
+                      <button id="practice-tool-tab-next" type="button" aria-label="Next bar">→</button>
+                      <label for="practice-tool-tab-zoom" class="practice-tool-tab-label">Zoom</label>
+                      <select id="practice-tool-tab-zoom" class="practice-tool-tab-select" aria-label="Score zoom">
+                        <option value="50">50%</option><option value="75">75%</option><option value="90" selected>90%</option>
+                        <option value="100">100%</option><option value="125">125%</option><option value="150">150%</option><option value="200">200%</option>
+                      </select>
                     </div>
                     <div class="practice-tool-tab-sync-bar" id="practice-tool-tab-sync-bar" hidden>
                       <button id="practice-tool-tab-sync-set" type="button" class="secondary practice-tool-tab-sync-set" title="Shortcut: T">Bar starts here</button>

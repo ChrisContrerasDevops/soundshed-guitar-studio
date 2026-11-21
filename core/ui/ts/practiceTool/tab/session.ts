@@ -37,6 +37,19 @@ import {
 import { applySyncPoints, closeScore, getPlaybackOrder, openScore, setTabReference, showTrack } from "./tabView.js";
 import { createYouTubeReference } from "./youtubeReference.js";
 
+let requestSequence = 0;
+let activeRequestId = "";
+
+export function beginTabImport(): string {
+  pendingBinding = null;
+  activeRequestId = `tab-${++requestSequence}`;
+  return activeRequestId;
+}
+
+export function isCurrentTabRequest(requestId: string): boolean {
+  return requestId === activeRequestId;
+}
+
 let trackReference: ReferenceSource | null = null;
 let youtubeReference: ReferenceSource | null = null;
 let videoHost: HTMLElement | null = null;
@@ -115,6 +128,8 @@ function connectReference(): void {
 /** Shows `binding`'s score, asking the engine for the file unless alphaTab already has it. */
 function showBinding(binding: PracticeToolTabBinding | null, options: { persist?: boolean } = {}): void {
   if (!binding) {
+    beginTabImport();
+    lastError = "";
     pendingBinding = null;
     loadedTabId = "";
     trackNames = [];
@@ -136,14 +151,18 @@ function showBinding(binding: PracticeToolTabBinding | null, options: { persist?
     render();
     return;
   }
+  const requestId = beginTabImport();
   pendingBinding = binding;
   setTabBinding(binding, options);
-  requestPracticeToolTab(binding.tabId);
+  requestPracticeToolTab(binding.tabId, requestId);
   render();
 }
 
 /** The engine's answer with a score's bytes: a file just opened, or one asked for by id. */
-export function onTabFileLoaded(payload: { id?: string; fileName?: string; data?: string }): void {
+export function onTabFileLoaded(payload: { id?: string; fileName?: string; data?: string; requestId?: string }): void {
+  if (payload.requestId !== undefined && !isCurrentTabRequest(payload.requestId)) {
+    return;
+  }
   const id = typeof payload.id === "string" ? payload.id : "";
   const data = typeof payload.data === "string" ? payload.data : "";
   if (!id || !data) {
@@ -167,21 +186,29 @@ export function onTabFileLoaded(payload: { id?: string; fileName?: string; data?
   lastError = "";
   trackNames = [];
   syncTarget = null;
-  void openScore(new Uint8Array(base64ToArrayBuffer(data)), binding.trackIndex)
-    .catch((error: unknown) => onTabError(error instanceof Error ? error.message : String(error)));
+  try {
+    void openScore(new Uint8Array(base64ToArrayBuffer(data)), binding.trackIndex);
+  } catch (error: unknown) {
+    onTabError(error instanceof Error ? error.message : String(error));
+    return;
+  }
   connectReference();
   appendLog(`practice tool tab opened ← ${binding.fileName}`);
   render();
 }
 
-export function onTabFileFailed(payload: { id?: string; error?: string }): void {
-  if (!pendingBinding || pendingBinding.tabId !== payload.id) {
+export function onTabFileFailed(payload: { id?: string; error?: string; requestId?: string; cancelled?: boolean }): void {
+  if (payload.requestId !== undefined && !isCurrentTabRequest(payload.requestId)) {
     return;
   }
-  const fileName = pendingBinding.fileName;
+  if (payload.cancelled) {
+    return;
+  }
+  if (payload.requestId === undefined && (!pendingBinding || pendingBinding.tabId !== payload.id)) {
+    return;
+  }
   pendingBinding = null;
-  lastError = `"${fileName}" is no longer in the library. Open the file again to bring it back.`;
-  render();
+  onTabError(payload.error || "This score could not be opened. Choose another file to try again.");
 }
 
 /** alphaTab could not open the score. It keeps showing the one before, which is
@@ -200,6 +227,10 @@ export function onTabError(message: string): void {
 /** alphaTab has parsed the score: its tracks are known and the sync points can go in. */
 export function onScoreParsed(tracks: string[], title: string): void {
   trackNames = tracks;
+  const binding = getTabBinding();
+  if (binding && binding.trackIndex >= tracks.length) {
+    setTabBinding({ ...binding, trackIndex: 0 });
+  }
   scoreTitle = title;
   render();
 }

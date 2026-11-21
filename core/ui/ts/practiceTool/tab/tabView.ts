@@ -53,6 +53,9 @@ let pendingTrackIndex = 0;
 let markers: { points: PracticeToolTabSyncPoint[]; target: BarSlot | null } = { points: [], target: null };
 let isVisible: () => boolean = () => true;
 let staveChoice: StaveChoice = "tab";
+let loadGeneration = 0;
+let zoom = 0.9;
+let visibleBar = 0;
 
 function staveProfile(at: AlphaTabNamespace, choice: StaveChoice): number {
   return choice === "scoretab" ? at.StaveProfile.ScoreTab : choice === "score" ? at.StaveProfile.Score : at.StaveProfile.Tab;
@@ -121,7 +124,7 @@ function startFollowing(): void {
     return;
   }
   const step = () => {
-    if (!reference?.isPlaying()) {
+    if (!api?.score || !reference?.isPlaying()) {
       frame = null;
       return;
     }
@@ -198,15 +201,15 @@ function drawMarkers(): void {
   }
 }
 
-async function ensureApi(): Promise<AlphaTabApi> {
-  if (api) {
-    return api;
-  }
+async function ensureApi(generation: number): Promise<AlphaTabApi | null> {
   if (!surface || !callbacks) {
     throw new Error("The tab view is not mounted");
   }
-  namespace = await loadAlphaTab();
-  const at = namespace;
+  const at = await loadAlphaTab();
+  if (generation !== loadGeneration) {
+    return null;
+  }
+  namespace = at;
   const viewport = surface.parentElement ?? surface;
   const created = new at.AlphaTabApi(surface, {
     core: {
@@ -222,7 +225,7 @@ async function ensureApi(): Promise<AlphaTabApi> {
     display: {
       layoutMode: at.LayoutMode.Page,
       staveProfile: staveProfile(at, staveChoice),
-      scale: 0.9,
+      scale: zoom,
     },
     player: {
       playerMode: at.PlayerMode.EnabledExternalMedia,
@@ -237,6 +240,9 @@ async function ensureApi(): Promise<AlphaTabApi> {
   api = created;
 
   created.scoreLoaded.on((score) => {
+    if (api !== created) {
+      return;
+    }
     // load() was asked for the remembered track; a file that has fewer tracks
     // now (edited since) falls back to its first.
     if (pendingTrackIndex >= score.tracks.length && score.tracks[0]) {
@@ -258,13 +264,23 @@ async function ensureApi(): Promise<AlphaTabApi> {
   // Not renderFinished: with the render worker, the bounds the flags are placed
   // by only arrive with postRenderFinished.
   created.postRenderFinished.on(() => {
+    if (api !== created) {
+      return;
+    }
     drawMarkers();
+    scrollToBar();
     callbacks?.onRendered();
   });
   created.error.on((error) => {
+    if (api !== created) {
+      return;
+    }
     callbacks?.onError(error?.message ? error.message : "The file could not be read as tablature");
   });
   created.playerReady.on(() => {
+    if (api !== created) {
+      return;
+    }
     const output = externalOutput();
     if (output) {
       output.handler = mediaHandler;
@@ -273,6 +289,9 @@ async function ensureApi(): Promise<AlphaTabApi> {
     onReferenceChange();
   });
   created.beatMouseDown.on((beat: model.Beat) => {
+    if (api !== created) {
+      return;
+    }
     if (!syncEditing || !created.tickCache) {
       return;
     }
@@ -302,18 +321,33 @@ export function mountTabView(element: HTMLElement, viewCallbacks: TabViewCallbac
 
 /** Parses and renders a score file. Errors come back through `onError`. */
 export async function openScore(bytes: Uint8Array, trackIndex: number): Promise<void> {
-  const created = await ensureApi();
-  pendingTrackIndex = trackIndex;
-  if (!created.load(bytes, [trackIndex])) {
-    callbacks?.onError("The file could not be read as tablature");
+  closeScore();
+  const generation = loadGeneration;
+  try {
+    const created = await ensureApi(generation);
+    if (!created || generation !== loadGeneration) {
+      return;
+    }
+    pendingTrackIndex = trackIndex;
+    if (!created.load(bytes, [trackIndex])) {
+      callbacks?.onError("The file could not be read as tablature");
+    }
+  } catch (error: unknown) {
+    if (generation !== loadGeneration) {
+      return;
+    }
+    callbacks?.onError(error instanceof Error ? error.message : String(error));
   }
 }
 
 export function closeScore(): void {
+  ++loadGeneration;
+  visibleBar = 0;
   stopFollowing();
   if (api) {
-    api.destroy();
+    const previous = api;
     api = null;
+    previous.destroy();
   }
   markerLayer = null;
   surface?.replaceChildren();
@@ -405,4 +439,41 @@ export function getSlotAtCursor(): BarSlot | null {
 /** Re-sends the reference's position (after the view is shown again). */
 export function refreshTabPosition(): void {
   pushPosition();
+}
+
+/** Reading controls change only the layout/viewport, never the reference transport. */
+export function getScoreViewState(): { bar: number; barCount: number; zoom: number } {
+  const barCount = api?.score?.masterBars.length ?? 0;
+  return { bar: barCount ? visibleBar + 1 : 0, barCount, zoom };
+}
+
+function scrollToBar(): void {
+  const bounds = api?.boundsLookup?.findMasterBarByIndex(visibleBar)?.realBounds;
+  const viewport = surface?.parentElement;
+  if (bounds && viewport) {
+    viewport.scrollTo({ top: Math.max(0, bounds.y - 16), left: Math.max(0, bounds.x - 16), behavior: "auto" });
+  }
+}
+
+export function goToScoreBar(bar: number): void {
+  const count = api?.score?.masterBars.length ?? 0;
+  if (!count || !Number.isFinite(bar)) {
+    return;
+  }
+  visibleBar = Math.max(0, Math.min(count - 1, Math.trunc(bar) - 1));
+  scrollToBar();
+}
+
+export function setScoreZoom(value: number): void {
+  if (!Number.isFinite(value)) {
+    return;
+  }
+  zoom = Math.max(0.5, Math.min(2, value));
+  if (api) {
+    api.settings.display.scale = zoom;
+    api.updateSettings();
+    if (api.score) {
+      api.render();
+    }
+  }
 }

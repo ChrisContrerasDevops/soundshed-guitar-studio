@@ -21,6 +21,33 @@ namespace
 {
 constexpr const char* kErrorTitle = "Unable to open tablature";
 
+// Optional correlation preserves clients that predate cancellable score loading.
+std::string RequestId(const nlohmann::json& payload)
+{
+    const auto value = payload.find("requestId");
+    return value != payload.end() && value->is_string() && value->get_ref<const std::string&>().size() <= 128
+               ? value->get<std::string>()
+               : std::string{};
+}
+
+void Reply(const PracticeTabMessageDeps& deps, nlohmann::json message, const std::string& requestId)
+{
+    if (!requestId.empty())
+    {
+        message["requestId"] = requestId;
+    }
+    deps.sendToUI(message.dump());
+}
+
+void ReportImportError(const PracticeTabMessageDeps& deps, const std::string& error, const std::string& requestId)
+{
+    deps.reportError(kErrorTitle, error);
+    if (!requestId.empty())
+    {
+        Reply(deps, {{"type", "practiceToolTabFailed"}, {"error", error}}, requestId);
+    }
+}
+
 /// The file's own name, without folders, and never empty — it labels the tab in the UI.
 std::string CleanFileName(const std::string& name)
 {
@@ -32,17 +59,17 @@ std::string CleanFileName(const std::string& name)
 /// Stores the score under its content hash (the same file opened twice is one row) and
 /// hands it to the UI. Returns false, having reported why, when it cannot be kept.
 bool StoreAndSend(const PracticeTabMessageDeps& deps, const std::string& fileName,
-                  const std::vector<std::uint8_t>& bytes)
+                  const std::vector<std::uint8_t>& bytes, const std::string& requestId)
 {
     if (bytes.empty())
     {
-        deps.reportError(kErrorTitle, "The file is empty.");
+        ReportImportError(deps, "The file is empty.", requestId);
         return false;
     }
 
     if (bytes.size() > kMaxPracticeTabBytes)
     {
-        deps.reportError(kErrorTitle, "The file is larger than 16 MB, which is more than any score needs.");
+        ReportImportError(deps, "The file is larger than 16 MB, which is more than any score needs.", requestId);
         return false;
     }
 
@@ -57,18 +84,17 @@ bool StoreAndSend(const PracticeTabMessageDeps& deps, const std::string& fileNam
 
     if (!deps.store().Put(storage::ItemType::kPracticeTab, id, document))
     {
-        deps.reportError(kErrorTitle, "The file could not be saved to the library.");
+        ReportImportError(deps, "The file could not be saved to the library.", requestId);
         return false;
     }
 
-    deps.sendToUI(
-        nlohmann::json{{"type", "practiceToolTabLoaded"}, {"id", id}, {"fileName", name}, {"data", data}}.dump());
+    Reply(deps, {{"type", "practiceToolTabLoaded"}, {"id", id}, {"fileName", name}, {"data", data}}, requestId);
     return true;
 }
 
-void SendFailed(const PracticeTabMessageDeps& deps, const std::string& id, const std::string& error)
+void SendFailed(const PracticeTabMessageDeps& deps, const std::string& id, const std::string& error, const std::string& requestId)
 {
-    deps.sendToUI(nlohmann::json{{"type", "practiceToolTabFailed"}, {"id", id}, {"error", error}}.dump());
+    Reply(deps, {{"type", "practiceToolTabFailed"}, {"id", id}, {"error", error}}, requestId);
 }
 } // namespace
 
@@ -76,10 +102,15 @@ void RegisterPracticeTabMessages(MessageHandlerRegistry& registry, PracticeTabMe
 {
     auto shared = std::make_shared<PracticeTabMessageDeps>(std::move(deps));
 
-    registry.Register("browsePracticeToolTab", [shared](const nlohmann::json&) {
-        shared->browseForTab([shared](const BrowseFileResult& result) {
+    registry.Register("browsePracticeToolTab", [shared](const nlohmann::json& payload) {
+        const auto requestId = RequestId(payload);
+        shared->browseForTab([shared, requestId](const BrowseFileResult& result) {
             if (!result.success)
             {
+                if (!requestId.empty())
+                {
+                    Reply(*shared, {{"type", "practiceToolTabFailed"}, {"cancelled", true}}, requestId);
+                }
                 return;
             }
 
@@ -88,7 +119,7 @@ void RegisterPracticeTabMessages(MessageHandlerRegistry& registry, PracticeTabMe
 
             if (!error && size > kMaxPracticeTabBytes)
             {
-                shared->reportError(kErrorTitle, "The file is larger than 16 MB, which is more than any score needs.");
+                ReportImportError(*shared, "The file is larger than 16 MB, which is more than any score needs.", requestId);
                 return;
             }
 
@@ -96,28 +127,30 @@ void RegisterPracticeTabMessages(MessageHandlerRegistry& registry, PracticeTabMe
 
             if (bytes.empty())
             {
-                shared->reportError(kErrorTitle, "The file could not be read: " + util::PathToUtf8(result.path));
+                ReportImportError(*shared, "The file could not be read: " + util::PathToUtf8(result.path), requestId);
                 return;
             }
 
-            StoreAndSend(*shared, util::PathToUtf8(result.path.filename()), bytes);
+            StoreAndSend(*shared, util::PathToUtf8(result.path.filename()), bytes, requestId);
         });
     });
 
     registry.Register("importPracticeToolTabData", [shared](const nlohmann::json& payload) {
+        const auto requestId = RequestId(payload);
         const std::string encoded = payload.value("data", "");
 
         // The base64 of the largest file allowed, with room for padding.
         if (encoded.size() > (kMaxPracticeTabBytes / 3 + 1) * 4)
         {
-            shared->reportError(kErrorTitle, "The file is larger than 16 MB, which is more than any score needs.");
+            ReportImportError(*shared, "The file is larger than 16 MB, which is more than any score needs.", requestId);
             return;
         }
 
-        StoreAndSend(*shared, payload.value("fileName", ""), util::DecodeBase64(encoded));
+        StoreAndSend(*shared, payload.value("fileName", ""), util::DecodeBase64(encoded), requestId);
     });
 
     registry.Register("requestPracticeToolTab", [shared](const nlohmann::json& payload) {
+        const auto requestId = RequestId(payload);
         const std::string id = payload.value("id", "");
 
         if (id.empty())
@@ -129,15 +162,14 @@ void RegisterPracticeTabMessages(MessageHandlerRegistry& registry, PracticeTabMe
 
         if (!stored || !stored->is_object() || !stored->contains("data") || !(*stored)["data"].is_string())
         {
-            SendFailed(*shared, id, "This tablature is no longer in the library. Open the file again.");
+            SendFailed(*shared, id, "This tablature is no longer in the library. Open the file again.", requestId);
             return;
         }
 
-        shared->sendToUI(nlohmann::json{{"type", "practiceToolTabLoaded"},
+        Reply(*shared, nlohmann::json{{"type", "practiceToolTabLoaded"},
                                         {"id", id},
                                         {"fileName", stored->value("fileName", std::string("Tablature"))},
-                                        {"data", (*stored)["data"]}}
-                             .dump());
+                                        {"data", (*stored)["data"]}}, requestId);
     });
 }
 } // namespace guitarfx

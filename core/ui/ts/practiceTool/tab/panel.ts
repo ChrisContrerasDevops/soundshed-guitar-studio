@@ -10,6 +10,8 @@ import { showNotification } from "../../notifications.js";
 import { uiState } from "../../state.js";
 import { arrayBufferToBase64, escapeHtml } from "../../utils.js";
 import {
+  beginTabImport,
+  isCurrentTabRequest,
   chooseReferenceKind,
   closeTab,
   getActiveReference,
@@ -43,6 +45,9 @@ import {
 } from "./tabView.js";
 import { parseYouTubeStartSeconds, parseYouTubeVideoId } from "./youtubeUrl.js";
 
+import { bindReadingControls, renderReadingControls } from "./readingControls.js";
+import { initializeScoreDock } from "./dock.js";
+
 const STAVES_SETTING_KEY = "practiceTool.tabStaves";
 const SHIFT_STEP_MS = 10;
 const TAB_FILE_EXTENSIONS = [".gp", ".gpx", ".gp3", ".gp4", ".gp5", ".gp7", ".musicxml", ".mxl", ".xml", ".capx", ".atex", ".alphatex"];
@@ -55,6 +60,10 @@ function byId<T extends HTMLElement>(id: string): T | null {
 
 /** The tab section is on screen: the Jam panel, on its Practice Tool section. */
 export function isTabSectionVisible(): boolean {
+  const dock = document.getElementById("score-dock");
+  if (dock && !dock.hidden) {
+    return true;
+  }
   if (!document.getElementById("panel-jam")?.classList.contains("active")) {
     return false;
   }
@@ -84,7 +93,7 @@ function hintText(): string {
   const reference = getActiveReference();
   const referenceName = getReferenceKind() === "youtube" ? "the video" : "the backing track";
   if (!binding) {
-    return "Open or drop a Guitar Pro, MusicXML or alphaTex file to show its tab and follow it with the reference.";
+    return "Open or drop a local Guitar Pro file to read its score and tablature. No backing track is required.";
   }
   if (isTabLoading() || !hasScore()) {
     return `Opening ${binding.fileName}…`;
@@ -92,7 +101,7 @@ function hintText(): string {
   if (!reference?.isAvailable()) {
     return getReferenceKind() === "youtube"
       ? "Paste a YouTube link and load it to play the tab along with the video."
-      : "Load a backing track to play the tab along with it.";
+      : "Read the score with the bar and zoom controls while playing through your current preset.";
   }
   if (syncEditing) {
     const target = getSyncTarget();
@@ -214,6 +223,7 @@ export function renderPracticeToolTab(): void {
   renderToolbar();
   renderSyncBar();
   renderStage();
+  renderReadingControls();
   if (isTabSectionVisible()) {
     refreshTabPosition();
   }
@@ -285,9 +295,22 @@ function bindDropZone(section: HTMLElement): void {
       showNotification("Not a tab file", "Drop a Guitar Pro (.gp, .gp5, .gpx…), MusicXML, Capella or alphaTex file");
       return;
     }
+    if (file.size === 0 || file.size > 16 * 1024 * 1024) {
+      showNotification("Unable to open tablature", file.size === 0 ? "The file is empty." : "Choose a score no larger than 16 MiB.");
+      return;
+    }
+    const requestId = beginTabImport();
     void file.arrayBuffer()
-      .then((buffer) => importPracticeToolTabData(file.name, arrayBufferToBase64(buffer)))
-      .catch((error: unknown) => showNotification("Unable to read dropped file", error instanceof Error ? error.message : String(error)));
+      .then((buffer) => {
+        if (isCurrentTabRequest(requestId)) {
+          importPracticeToolTabData(file.name, arrayBufferToBase64(buffer), requestId);
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCurrentTabRequest(requestId)) {
+          showNotification("Unable to read dropped file", error instanceof Error ? error.message : String(error));
+        }
+      });
   });
 }
 
@@ -297,7 +320,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function bindActions(): void {
-  byId("practice-tool-tab-open")?.addEventListener("click", () => browsePracticeToolTab());
+  byId("practice-tool-tab-open")?.addEventListener("click", () => browsePracticeToolTab(beginTabImport()));
   byId("practice-tool-tab-close")?.addEventListener("click", () => {
     setSyncEditingOn(false);
     closeTab();
@@ -367,12 +390,14 @@ export function initializePracticeToolTab(): void {
   mountTabView(surface, {
     onScoreLoaded: onScoreParsed,
     onTimingReady: onScoreTimingReady,
-    onRendered: () => undefined,
+    onRendered: renderReadingControls,
     onError: (message) => onTabError(message),
     onBarPicked: (slot) => setSyncTarget(slot),
   }, isTabSectionVisible);
   onTabStateChange(() => requestTabRender());
   bindDropZone(section);
   bindActions();
+  bindReadingControls();
+  initializeScoreDock(section, renderPracticeToolTab);
   renderPracticeToolTab();
 }
